@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { createUserSchema, updateUserSchema } from '../validation/user.schema';
+import { ZodError } from 'zod'; // 👈 import ZodError
+import { createUserSchema } from '../validation/user.schema';
+import { usernameparameterSchema} from '../validation/parameter.schema';
 import * as userService from '../services/user.service';
 
 export const createUser = async (req: Request, res: Response) => {
@@ -12,13 +14,37 @@ export const createUser = async (req: Request, res: Response) => {
   }
 };
 
-export const getUser = async (req: Request, res: Response) => {
+/**
+ * GET /users/username/:username
+ * Fetch a user by their username
+ */
+export const getUserByUsername = async (req: Request, res: Response) => {
   try {
-    const user = await userService.getUserById(req.params.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    // ✅ Validate and extract username from route params
+    const  {username}  = usernameparameterSchema.parse(req.params);
+    console.log('suername: '+username);
+
+    // ✅ Fetch user (service should exclude sensitive fields like password)
+    const user = await userService.getUserByUsername(username);
+    // const resul1=user.delete(password);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    // 🔒 Handle Zod validation errors (e.g., username too short/long, invalid chars)
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: 'Invalid username format',
+        details: error.errors,
+      });
+    }
+
+    // 🛑 Handle unexpected errors (log internally, don't expose details)
+    console.error('Error fetching user by username:', error);
+    return res.status(500).json({ error: 'Failed to retrieve user' });
   }
 };
 
@@ -33,7 +59,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const parsed = updateUserSchema.parse(req.body);
+    const parsed = parameter.parse(req.body);
     const user = await userService.updateUser(req.params.id, parsed);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
