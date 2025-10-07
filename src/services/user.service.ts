@@ -9,6 +9,13 @@ export const getUserById = async (id: string) => {
   return await UserModel.findById(id);
 };
 
+export const getUserByUsername = async (username: string) => {
+      const user = await UserModel.findOne({ username }).
+      select({ password: 0, _id: 0 ,created_at:0}).
+      lean();
+      return user;
+    };
+
 export const getAllUsers = async () => {
   return await UserModel.find();
 };
